@@ -50,7 +50,10 @@
 10. **개발자 작업 확인**
     - 개발자가 "1단계 안내서 완료"를 알려 왔다.
     - `.env`의 세 항목에 값이 들어 있는지만 확인했다. 값 자체는 출력하지 않았다.
-11. **문서 작성과 커밋**: 학습 정리와 개발 기록을 쓴 뒤, 커밋 대상에 비밀 파일이 없는지 확인하고 커밋·push한다.
+11. **문서 작성과 커밋**
+    - 학습 정리와 개발 기록을 쓰고, 커밋 대상에 비밀 파일이 없는지 확인한 뒤 커밋했다.
+    - push는 에이전트 환경에서 GitHub 로그인 창을 띄울 수 없어서 실패했다.
+    - 그래서 개발자가 직접 push하도록 안내했다. (5번 문제 7)
 
 ---
 
@@ -278,6 +281,24 @@ warning: in the working copy of 'app/config.py', LF will be replaced by CRLF the
   - 이 컴퓨터의 Git 설정이 `core.autocrlf=true`이다.
   - 그래서 Git이 줄바꿈 문자를 Windows 방식(CRLF)으로 바꾸겠다고 알린 것이다.
 - **해결**: 동작에는 영향이 없는 알림이라 그대로 두었다.
+
+### 문제 7. 에이전트 환경에서 push 실패 (GitHub 로그인 필요)
+
+- **에러** (`git push -u origin main`)
+
+  ```
+  fatal: Cannot prompt because user interactivity has been disabled.
+  fatal: could not read Username for 'https://github.com': terminal prompts disabled
+  ```
+
+- **원인**
+  - 저장소가 비공개라서 push하려면 GitHub 로그인이 필요하다.
+  - 이 컴퓨터에는 아직 GitHub 로그인 정보가 저장되어 있지 않다.
+  - 에이전트가 명령을 실행하는 환경은 로그인 창을 띄울 수 없게 되어 있다.
+- **해결**
+  - 개발자가 일반 PowerShell 창에서 `git push -u origin main`을 직접 실행한다.
+  - 그러면 Git Credential Manager(Git이 GitHub 로그인 정보를 안전하게 저장해 주는 도구)가 로그인 창을 띄운다.
+  - 한 번 로그인하면 그 정보가 Windows에 저장된다.
 
 ---
 
