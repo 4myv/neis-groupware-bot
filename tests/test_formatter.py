@@ -9,6 +9,7 @@ from app.formatter import (
     find_lunch_row,
     format_date,
     format_lunch_message,
+    format_week_schedule_message,
     parse_dishes,
     remove_allergy_numbers,
     split_dishes,
@@ -141,4 +142,58 @@ def test_format_lunch_message_no_data_is_normal():
     assert format_lunch_message(MEAL_RESULT_NO_DATA, "20261108") == (
         "[11월 8일(일) 중식]\n"
         "오늘은 급식이 없습니다."
+    )
+
+
+def test_format_lunch_message_with_tomorrow_wording():
+    assert format_lunch_message(MEAL_RESULT_NO_DATA, "20261108", "내일은 급식이 없습니다.") == (
+        "[11월 8일(일) 중식]\n"
+        "내일은 급식이 없습니다."
+    )
+
+
+# ---- 학사일정 (8단계) ----
+# 공개된 예시 학교(서울고등학교)의 실제 응답(2026-11-02 ~ 11-08)을 필요한 키만 남겨 줄였다.
+# 같은 날 같은 행사가 두 번 오는 경우(부산고 실제 응답)도 넣었다.
+
+def schedule_row(aa_ymd, event_nm):
+    return {"AA_YMD": aa_ymd, "EVENT_NM": event_nm, "SBTR_DD_SC_NM": "해당없음"}
+
+
+SCHEDULE_RESULT_THIS_WEEK = {
+    "SchoolSchedule": [
+        {"head": [{"list_total_count": 8}, {"RESULT": {"CODE": "INFO-000", "MESSAGE": "정상 처리되었습니다."}}]},
+        {
+            "row": [
+                schedule_row("20261102", "수학 하이챌린지(1,2)"),
+                schedule_row("20261103", "정보 하이챌린지"),
+                schedule_row("20261104", "수업공개의 날"),
+                schedule_row("20261104", "독서골든벨"),
+                schedule_row("20261105", "과학 하이챌린지(1,2)"),
+                schedule_row("20261106", "학교폭력예방교육"),
+                schedule_row("20261106", "학교폭력예방교육"),
+                schedule_row("20261107", "토요휴업일"),
+            ]
+        },
+    ]
+}
+
+SCHEDULE_RESULT_NO_DATA = {"RESULT": {"CODE": "INFO-200", "MESSAGE": "해당하는 데이터가 없습니다."}}
+
+
+def test_week_schedule_groups_by_date_and_hides_saturday_holiday():
+    assert format_week_schedule_message(SCHEDULE_RESULT_THIS_WEEK, "20261102", "20261108") == (
+        "[11월 2일(월) ~ 11월 8일(일) 학사일정]\n"
+        "11월 2일(월) 수학 하이챌린지(1,2)\n"
+        "11월 3일(화) 정보 하이챌린지\n"
+        "11월 4일(수) 수업공개의 날, 독서골든벨\n"
+        "11월 5일(목) 과학 하이챌린지(1,2)\n"
+        "11월 6일(금) 학교폭력예방교육"
+    )
+
+
+def test_week_schedule_without_events():
+    assert format_week_schedule_message(SCHEDULE_RESULT_NO_DATA, "20261228", "20270103") == (
+        "[12월 28일(월) ~ 1월 3일(일) 학사일정]\n"
+        "없음"
     )

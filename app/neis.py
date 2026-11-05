@@ -96,6 +96,18 @@ def fetch_schools(school_name: str) -> dict:
     return call_neis_api("schoolInfo", search_conditions)
 
 
+def fetch_schedules(office_code: str, school_code: str, from_date: str, to_date: str) -> dict:
+    # from_date부터 to_date까지(둘 다 포함) 학사일정을 가져온다.
+    # 요청 인자 이름은 NEIS 학사일정 Open API 명세에서 확인했다. (docs/step08-devlog.md)
+    search_conditions = {
+        "ATPT_OFCDC_SC_CODE": office_code,
+        "SD_SCHUL_CODE": school_code,
+        "AA_FROM_YMD": from_date,
+        "AA_TO_YMD": to_date,
+    }
+    return call_neis_api("SchoolSchedule", search_conditions)
+
+
 def fetch_meals(office_code: str, school_code: str, meal_date: str) -> dict:
     # 중식·석식을 가리지 않고 그날의 급식을 모두 가져온다.
     # 중식만 고르는 일은 app/formatter.py가 한다.

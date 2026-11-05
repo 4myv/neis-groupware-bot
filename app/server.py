@@ -5,19 +5,20 @@
 #
 # 6단계: 받은 이벤트를 출력한다.
 # 7단계: 서명이 맞지 않는 요청은 거부하고, 같은 이벤트는 한 번만 처리하고, 명령어를 해석한다.
-# 답장은 8단계에서 더한다.
+# 8단계: Slack에 먼저 응답한 뒤, 뒤에서 명령어 답장을 보낸다.
 # 요청 모양과 규칙은 Slack 공식 문서(Events API, url_verification, message, 요청 서명)를 따랐다.
 
 import json
 import time
 
-from fastapi import FastAPI, Request
+from fastapi import BackgroundTasks, FastAPI, Request
 from fastapi.responses import PlainTextResponse
 
 from app.auth import is_valid_slack_request
 from app.commands import parse_command
 from app.config import SLACK_SIGNING_SECRET
 from app.log import logger
+from app.notifier import send_command_reply
 
 # 터널로 인터넷에 열리는 서버라서, FastAPI가 자동으로 만드는 문서 페이지(/docs 등)는 끈다.
 app = FastAPI(docs_url=None, redoc_url=None, openapi_url=None)
@@ -42,7 +43,7 @@ def is_user_message(event: dict) -> bool:
 
 
 @app.post("/slack/events")
-async def receive_slack_event(request: Request) -> PlainTextResponse:
+async def receive_slack_event(request: Request, background_tasks: BackgroundTasks) -> PlainTextResponse:
     # 서명은 받은 그대로의 본문으로 계산해야 한다. 그래서 JSON으로 바꾸기 전에 원래 본문(바이트)을 먼저 읽는다.
     body = await request.body()
     timestamp = request.headers.get("x-slack-request-timestamp", "")
@@ -76,6 +77,9 @@ async def receive_slack_event(request: Request) -> PlainTextResponse:
             print("[명령어]", command, "| 보낸 글:", event.get("text"))
             # 로그에는 보낸 글 대신 어떤 명령어로 해석했는지만 남긴다.
             logger.info(f"명령어 해석: event_id={event_id}, 명령어={command}")
+            # NEIS 조회와 Slack 전송은 3초를 넘길 수 있다.
+            # 그래서 답장은 뒤에서(응답을 돌려준 다음에) 보내도록 맡겨 두고, Slack에는 바로 200을 돌려준다.
+            background_tasks.add_task(send_command_reply, event["channel"], command)
         else:
             logger.info(f"사람이 보낸 새 메시지가 아니라 건너뜁니다: event_id={event_id}, subtype={event.get('subtype')}")
 

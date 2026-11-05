@@ -1,7 +1,20 @@
 # test_commands.py: 사용자가 보낸 말을 명령어로 해석하는 규칙과, 서버가 이벤트를 걸러내는 규칙을 확인하는 테스트
 # 실행 방법(가상환경을 켠 상태에서, 프로젝트 최상위 폴더에서): python -m pytest
 
-from app.commands import HELP, THIS_WEEK_SCHEDULE, TODAY_LUNCH, TOMORROW_LUNCH, parse_command
+from datetime import date
+
+from app.commands import (
+    HELP,
+    HELP_TEXT,
+    THIS_WEEK_SCHEDULE,
+    TODAY_LUNCH,
+    TOMORROW_LUNCH,
+    build_reply,
+    parse_command,
+    to_yyyymmdd,
+    week_end,
+    week_start,
+)
 from app.server import is_duplicate_event, is_user_message
 
 
@@ -49,3 +62,28 @@ def test_edited_message_is_ignored():
 def test_same_event_id_is_duplicate_the_second_time():
     assert not is_duplicate_event("Ev-test-only-0001")
     assert is_duplicate_event("Ev-test-only-0001")
+
+
+# ---- 답장에 쓰는 날짜 계산 (8단계) ----
+
+def test_date_to_neis_format():
+    assert to_yyyymmdd(date(2026, 11, 5)) == "20261105"
+
+
+def test_this_week_from_thursday():
+    assert week_start(date(2026, 11, 5)) == date(2026, 11, 2)
+    assert week_end(date(2026, 11, 5)) == date(2026, 11, 8)
+
+
+def test_this_week_from_monday_and_sunday():
+    assert week_start(date(2026, 11, 2)) == date(2026, 11, 2)
+    assert week_start(date(2026, 11, 8)) == date(2026, 11, 2)
+
+
+def test_this_week_across_new_year():
+    assert week_start(date(2027, 1, 1)) == date(2026, 12, 28)
+    assert week_end(date(2027, 1, 1)) == date(2027, 1, 3)
+
+
+def test_help_reply_does_not_need_neis():
+    assert build_reply(HELP, date(2026, 11, 5)) == HELP_TEXT

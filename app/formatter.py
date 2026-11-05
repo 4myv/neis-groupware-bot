@@ -17,6 +17,16 @@ WEEKDAY_NAMES: list[str] = ["월", "화", "수", "목", "금", "토", "일"]
 # 메시지에서 메뉴와 메뉴 사이에 넣을 구분자
 DISH_SEPARATOR: str = " / "
 
+# 학사일정이 없을 때 쓸 문구 (CLAUDE.md 메시지 예시)
+NO_SCHEDULE_TEXT: str = "없음"
+
+# 학사일정 메시지에서 뺄 행사 이름.
+# 확인한 학교 세 곳의 실제 응답에 매주 토요일마다 들어 있어서, 그대로 두면 매번 같은 줄이 붙는다. (step08 개발 기록)
+HIDDEN_EVENT_NAMES: list[str] = ["토요휴업일"]
+
+# 같은 날의 행사 이름 사이에 넣을 구분자
+EVENT_SEPARATOR: str = ", "
+
 
 def split_dishes(ddish_text: str) -> list[str]:
     # NEIS는 메뉴 사이를 줄바꿈 태그 <br/>로 이어 보낸다. 예: "흑미밥 <br/>부대찌개 (1.2.5.6)"
@@ -104,13 +114,53 @@ def join_dish_names(dishes: list[dict]) -> str:
     return DISH_SEPARATOR.join(names)
 
 
-def format_lunch_message(meal_result: dict, meal_date: str) -> str:
+def format_lunch_message(meal_result: dict, meal_date: str, no_meal_text: str = NO_MEAL_TEXT) -> str:
     # 메시지 모양 (CLAUDE.md 예시):
     # [11월 5일(목) 중식]
     # 쌀밥 / 된장찌개 / 제육볶음 / 배추김치 / 요구르트
+    # no_meal_text: 급식이 없을 때 쓸 문구. "내일 급식" 답장에서는 "내일은 급식이 없습니다."를 넘긴다.
     title = f"[{format_date(meal_date)} 중식]"
     lunch_row = find_lunch_row(meal_result)
     if lunch_row == {}:
-        return title + "\n" + NO_MEAL_TEXT
+        return title + "\n" + no_meal_text
     dishes = parse_dishes(lunch_row["DDISH_NM"])
     return title + "\n" + join_dish_names(dishes)
+
+
+def group_events_by_date(schedule_result: dict) -> dict[str, list[str]]:
+    # 학사일정 응답을 {"20261104": ["수업공개의 날", "독서골든벨"], ...} 모양으로 묶는다.
+    # 일정이 없는 기간은 "SchoolSchedule" 키 없이 RESULT만 온다. (급식과 같은 모양)
+    events_by_date = {}
+    if "SchoolSchedule" not in schedule_result:
+        return events_by_date
+    for row in schedule_result["SchoolSchedule"][1]["row"]:
+        event_date = row["AA_YMD"]
+        event_name = row["EVENT_NM"].strip()
+        if event_name in HIDDEN_EVENT_NAMES:
+            continue
+        if event_date not in events_by_date:
+            events_by_date[event_date] = []
+        # 같은 날 같은 행사가 두 번 들어 있는 경우가 있어서 한 번만 넣는다.
+        if event_name not in events_by_date[event_date]:
+            events_by_date[event_date].append(event_name)
+    return events_by_date
+
+
+def format_schedule_lines(schedule_result: dict) -> list[str]:
+    # 날짜마다 한 줄: "11월 4일(수) 수업공개의 날, 독서골든벨"
+    lines = []
+    events_by_date = group_events_by_date(schedule_result)
+    for event_date in sorted(events_by_date):
+        lines.append(format_date(event_date) + " " + EVENT_SEPARATOR.join(events_by_date[event_date]))
+    return lines
+
+
+def format_week_schedule_message(schedule_result: dict, start_date: str, end_date: str) -> str:
+    # 메시지 모양:
+    # [11월 2일(월) ~ 11월 8일(일) 학사일정]
+    # 11월 2일(월) 수학 하이챌린지(1,2)
+    title = f"[{format_date(start_date)} ~ {format_date(end_date)} 학사일정]"
+    lines = format_schedule_lines(schedule_result)
+    if lines == []:
+        return title + "\n" + NO_SCHEDULE_TEXT
+    return title + "\n" + "\n".join(lines)
