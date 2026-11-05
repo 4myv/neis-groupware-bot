@@ -103,6 +103,16 @@ python show_meal_json.py
 
 ### 에이전트가 실행한 결과 (예시 학교)
 
+> 아래 [A]~[F]는 에이전트가 확인한 결과입니다. 개발자가 따로 할 일이 아닙니다.
+> 개발자는 위의 ①~④만 하고, 아래 결과는 내 화면과 비교할 때 봅니다.
+
+| 결과 | 해당하는 순서 |
+| --- | --- |
+| [A] | ② `find_school.py` |
+| [B], [C], [D] | ④ `show_meal_json.py` |
+| [E] | 없음 (에이전트가 확인용으로만 해 본 것) |
+| [F] | ① `python -m pip install -r requirements.txt` |
+
 **[A] `find_school.py`에 `서울고등학교` 입력**
 
 ```
@@ -255,7 +265,9 @@ python show_meal_json.py
 
 `MLSV_YMD`에 `202611`처럼 월만 넣었더니 11월 한 달 치 39건(중식 20건, 석식 19건)이 왔습니다.
 
-**[F] `requirements.txt`로 설치**
+**[F] `requirements.txt`로 설치 (①을 실행하면 나오는 화면)**
+
+이 컴퓨터에서는 에이전트가 같은 `.venv`에 이미 설치해 두어서, 모두 `already satisfied`(이미 설치됨)로 나옵니다.
 
 ```
 Requirement already satisfied: python-dotenv==1.2.4 in .\.venv\Lib\site-packages (from -r requirements.txt (line 7)) (1.2.4)

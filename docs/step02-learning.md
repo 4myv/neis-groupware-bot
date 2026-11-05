@@ -1166,7 +1166,35 @@ NEIS_SCHOOL_CODE=
 
 ---
 
-## 6. 확인 문제
+## 6. 개발자 질문
+
+**질문: 개발 기록 4번의 [F](`requirements.txt`로 설치)도 해야 해?**
+
+[F]는 따로 할 일이 아닙니다.
+개발 기록 4번의 "개발자가 따라 할 순서" ①을 실행하면 나오는 화면입니다.
+[A]~[F]는 모두 에이전트가 실행해 본 결과입니다.
+
+이 컴퓨터에서는 ①을 실행해도 바뀌는 것이 없습니다.
+
+- 가상환경은 프로젝트 폴더 안의 `.venv` 하나입니다. 에이전트와 개발자가 같은 `.venv`를 씁니다. (step01 2-2 참고)
+- 에이전트가 이미 `requests`를 설치했으므로, `Requirement already satisfied`(이미 설치되어 있음)만 나옵니다.
+- 여러 번 실행해도 이미 설치된 것은 건너뛰므로 안전합니다. 습관 삼아 실행해 두면 좋습니다.
+
+다른 컴퓨터에서 저장소를 받았다면 ①은 꼭 해야 합니다.
+그 컴퓨터의 `.venv`에는 `requests`가 없습니다. 빠뜨리면 `import requests` 줄에서 아래 오류가 납니다. (requests가 없는 Python으로 실제 실행한 결과)
+
+```
+Traceback (most recent call last):
+  File "<string>", line 1, in <module>
+    import requests
+ModuleNotFoundError: No module named 'requests'
+```
+
+`.venv` 폴더는 `.gitignore`로 GitHub에 올리지 않습니다. 그래서 저장소에는 "무엇을 설치해야 하는지"를 적은 `requirements.txt`만 있고, 설치는 컴퓨터마다 직접 해야 합니다. (step01 2-4 참고)
+
+---
+
+## 7. 확인 문제
 
 ### 문제 1. 코드 읽기: 이 코드를 실행하면 화면에 무엇이 나올까요?
 
