@@ -1,4 +1,4 @@
-# python practice step01 - 가상환경, pip, requirements.txt
+# python practice step01\p2 - 가상환경, pip, requirements.txt
 
 # .venv 가상환경을 켜는 명령어
 # .venv\Scripts\activate
