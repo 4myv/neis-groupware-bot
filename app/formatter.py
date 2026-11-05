@@ -27,6 +27,12 @@ HIDDEN_EVENT_NAMES: list[str] = ["토요휴업일"]
 # 같은 날의 행사 이름 사이에 넣을 구분자
 EVENT_SEPARATOR: str = ", "
 
+# 정기 알림에 붙는 학사일정 부분의 제목 (CLAUDE.md 메시지 예시)
+TODAY_SCHEDULE_TITLE: str = "[오늘의 학사일정]"
+
+# 정기 알림에서 학사일정을 가져오지 못했을 때 제목 아래에 쓸 문구
+SCHEDULE_FAILED_TEXT: str = "학사일정을 가져오지 못했습니다."
+
 
 def split_dishes(ddish_text: str) -> list[str]:
     # NEIS는 메뉴 사이를 줄바꿈 태그 <br/>로 이어 보낸다. 예: "흑미밥 <br/>부대찌개 (1.2.5.6)"
@@ -164,3 +170,18 @@ def format_week_schedule_message(schedule_result: dict, start_date: str, end_dat
     if lines == []:
         return title + "\n" + NO_SCHEDULE_TEXT
     return title + "\n" + "\n".join(lines)
+
+
+def format_today_schedule(schedule_result: dict, schedule_date: str) -> str:
+    # 정기 알림에 붙는 부분:
+    # [오늘의 학사일정]
+    # 수업공개의 날, 독서골든벨
+    events_by_date = group_events_by_date(schedule_result)
+    if schedule_date not in events_by_date:
+        return TODAY_SCHEDULE_TITLE + "\n" + NO_SCHEDULE_TEXT
+    return TODAY_SCHEDULE_TITLE + "\n" + EVENT_SEPARATOR.join(events_by_date[schedule_date])
+
+
+def format_daily_message(lunch_message: str, schedule_section: str) -> str:
+    # 급식 부분과 학사일정 부분 사이에 빈 줄 하나를 둔다. (CLAUDE.md 메시지 예시)
+    return lunch_message + "\n\n" + schedule_section

@@ -7,8 +7,10 @@
 from app.formatter import (
     extract_allergy_numbers,
     find_lunch_row,
+    format_daily_message,
     format_date,
     format_lunch_message,
+    format_today_schedule,
     format_week_schedule_message,
     parse_dishes,
     remove_allergy_numbers,
@@ -196,4 +198,40 @@ def test_week_schedule_without_events():
     assert format_week_schedule_message(SCHEDULE_RESULT_NO_DATA, "20261228", "20270103") == (
         "[12월 28일(월) ~ 1월 3일(일) 학사일정]\n"
         "없음"
+    )
+
+
+# ---- 정기 알림의 오늘의 학사일정 (9단계) ----
+
+def test_today_schedule_with_two_events():
+    assert format_today_schedule(SCHEDULE_RESULT_THIS_WEEK, "20261104") == (
+        "[오늘의 학사일정]\n"
+        "수업공개의 날, 독서골든벨"
+    )
+
+
+def test_today_schedule_on_saturday_holiday_is_none():
+    # 토요휴업일만 있는 날은 숨기고 나면 일정이 없다.
+    assert format_today_schedule(SCHEDULE_RESULT_THIS_WEEK, "20261107") == (
+        "[오늘의 학사일정]\n"
+        "없음"
+    )
+
+
+def test_today_schedule_without_data():
+    assert format_today_schedule(SCHEDULE_RESULT_NO_DATA, "20261108") == (
+        "[오늘의 학사일정]\n"
+        "없음"
+    )
+
+
+def test_daily_message_has_blank_line_between_parts():
+    lunch_message = format_lunch_message(MEAL_RESULT_WITH_LUNCH, "20261105")
+    schedule_section = format_today_schedule(SCHEDULE_RESULT_THIS_WEEK, "20261105")
+    assert format_daily_message(lunch_message, schedule_section) == (
+        "[11월 5일(목) 중식]\n"
+        "흑미밥 / 부대찌개 / 호박볶음 / 오지치즈스틱 / 고등어구이 / 백김치\n"
+        "\n"
+        "[오늘의 학사일정]\n"
+        "과학 하이챌린지(1,2)"
     )

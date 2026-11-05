@@ -13,6 +13,15 @@ from dotenv import load_dotenv
 # .env 파일이 없어도 오류를 내지 않으므로, 값이 비었는지는 쓰는 쪽에서 확인해야 한다.
 load_dotenv()
 
+
+def read_int_setting(name: str, default: int) -> int:
+    # 숫자 설정을 읽는다. .env에 없거나 비워 두면 기본값을 쓴다.
+    # 숫자가 아닌 값을 적으면 int()에서 오류가 나서 프로그램이 켜지지 않는다. 잘못된 설정을 바로 알 수 있다.
+    value = os.getenv(name, "")
+    if value == "":
+        return default
+    return int(value)
+
 # 값이 없을 때 None 대신 빈 문자열("")을 넣는다.
 # 그래야 이 값을 쓰는 코드가 "문자열인가?"를 따로 따지지 않고 바로 비교할 수 있다.
 NEIS_API_KEY: str = os.getenv("NEIS_API_KEY", "")
@@ -33,6 +42,10 @@ SLACK_SIGNING_SECRET: str = os.getenv("SLACK_SIGNING_SECRET", "")
 
 # 오류 알림을 받는 관리자 전용 채널 (5단계부터 사용)
 SLACK_ADMIN_CHANNEL_ID: str = os.getenv("SLACK_ADMIN_CHANNEL_ID", "")
+
+# 매일 정기 알림을 보낼 시각 (9단계부터 사용). PC 시계 기준이고, 기본은 아침 7시 30분이다.
+NOTIFY_HOUR: int = read_int_setting("NOTIFY_HOUR", 7)
+NOTIFY_MINUTE: int = read_int_setting("NOTIFY_MINUTE", 30)
 
 # 토큰 자동 교체를 켜서 토큰이 12시간마다 바뀐다.
 # 프로그램이 스스로 고쳐 써야 하는 값이라 .env가 아니라 따로 파일에 저장한다.

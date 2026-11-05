@@ -1,16 +1,22 @@
 # notifier.py: 메시지 하나를 처음부터 끝까지 보내고, 실패하면 관리자에게 알리는 파일
 #
 # NEIS 조회 → 메시지 만들기 → Slack 전송을 차례로 하고, 어느 단계에서든 실패하면 관리자 채널로 알린다.
-# - send_lunch_notification: 급식 알림 (9단계 정기 알림, send_lunch_message.py)
+# - send_lunch_notification: 급식 + 오늘의 학사일정 알림 (9단계 정기 알림, send_lunch_message.py)
 # - send_command_reply: 명령어 답장 (8단계 콜백 서버)
 
 from datetime import date
 
 from app.commands import build_reply
 from app.config import NEIS_OFFICE_CODE, NEIS_SCHOOL_CODE, SLACK_ADMIN_CHANNEL_ID, SLACK_CHANNEL_ID
-from app.formatter import format_lunch_message
+from app.formatter import (
+    SCHEDULE_FAILED_TEXT,
+    TODAY_SCHEDULE_TITLE,
+    format_daily_message,
+    format_lunch_message,
+    format_today_schedule,
+)
 from app.log import logger
-from app.neis import NeisError, fetch_meals
+from app.neis import NeisError, fetch_meals, fetch_schedules
 from app.sender import post_message
 
 ADMIN_ALERT_TITLE: str = "[급식 봇 오류 알림]"
@@ -26,6 +32,17 @@ def notify_admin(problem: str) -> None:
         logger.error("관리자 오류 알림도 보내지 못했습니다. 로그 파일을 확인하세요.")
 
 
+def make_today_schedule_section(schedule_date: str) -> str:
+    # 학사일정은 '선택' 기능이다. 가져오지 못해도 급식 알림은 보내야 하므로, 오류를 잡아 대신 쓸 문구를 돌려준다.
+    try:
+        schedule_result = fetch_schedules(NEIS_OFFICE_CODE, NEIS_SCHOOL_CODE, schedule_date, schedule_date)
+    except NeisError as error:
+        logger.error(f"{schedule_date} 학사일정 조회 실패: {error}")
+        notify_admin(f"{schedule_date} 학사일정을 NEIS에서 받지 못했습니다. 급식 알림은 학사일정 없이 보냅니다.\n{error}")
+        return TODAY_SCHEDULE_TITLE + "\n" + SCHEDULE_FAILED_TEXT
+    return format_today_schedule(schedule_result, schedule_date)
+
+
 def send_lunch_notification(meal_date: str) -> bool:
     # 성공하면 True, 실패하면 관리자에게 알린 뒤 False를 돌려준다.
     try:
@@ -35,7 +52,9 @@ def send_lunch_notification(meal_date: str) -> bool:
         notify_admin(f"{meal_date} 급식 정보를 NEIS에서 받지 못했습니다.\n{error}")
         return False
 
-    message = format_lunch_message(meal_result, meal_date)
+    lunch_message = format_lunch_message(meal_result, meal_date)
+    schedule_section = make_today_schedule_section(meal_date)
+    message = format_daily_message(lunch_message, schedule_section)
     response_body = post_message(SLACK_CHANNEL_ID, message)
     if not response_body["ok"]:
         notify_admin(f"{meal_date} 급식 알림을 Slack으로 보내지 못했습니다. (오류 코드: {response_body['error']})")

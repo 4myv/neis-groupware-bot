@@ -1,4 +1,5 @@
-# send_lunch_message.py: .env에 적은 학교의 중식 알림을 Slack 급식 알림 채널로 보내는 파일
+# send_lunch_message.py: .env에 적은 학교의 중식 알림(9단계부터 그날의 학사일정 포함)을 Slack 급식 알림 채널로 보내는 파일
+# 매일 아침 자동으로 보내는 일은 main.py가 한다. 이 파일은 원하는 날짜로 직접 한 번 보내 볼 때 쓴다.
 # 실행 방법(가상환경을 켠 상태에서): python send_lunch_message.py
 # 먼저 setup_slack_token.py를 한 번 실행해 토큰 파일을 만들어 두어야 한다.
 #
