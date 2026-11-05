@@ -12,3 +12,8 @@ requests==2.34.2
 
 # 테스트를 실행하는 도구 (3단계부터 사용). 실행: python -m pytest
 pytest==9.2.0
+
+# 콜백 서버 (6단계부터 사용). FastAPI로 서버 코드를 쓰고, Uvicorn으로 실행한다.
+# 실행: python -m uvicorn app.server:app --port 8000
+fastapi==0.162.0
+uvicorn==0.54.0
