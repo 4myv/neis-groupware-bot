@@ -15,3 +15,8 @@ load_dotenv()
 # 값이 없을 때 None 대신 빈 문자열("")을 넣는다.
 # 그래야 이 값을 쓰는 코드가 "문자열인가?"를 따로 따지지 않고 바로 비교할 수 있다.
 NEIS_API_KEY: str = os.getenv("NEIS_API_KEY", "")
+
+# 급식을 조회할 학교의 코드.
+# 비밀값은 아니지만, 개발자가 다니는 학교를 저장소에 남기지 않으려고 코드 대신 .env에 둔다.
+NEIS_OFFICE_CODE: str = os.getenv("NEIS_OFFICE_CODE", "")
+NEIS_SCHOOL_CODE: str = os.getenv("NEIS_SCHOOL_CODE", "")
