@@ -304,6 +304,7 @@ python -m pytest
 | [`docs/step01-setup-guide.md`](docs/step01-setup-guide.md) | NEIS 인증키 발급, Slack 워크스페이스·앱 만들기 안내 |
 | `docs/stepNN-learning.md` | 그 단계에서 새로 나온 Python 문법과 코드 줄 단위 해설, 확인 문제 |
 | `docs/stepNN-devlog.md` | 그 단계에서 한 일, 실행 결과, 문제와 해결, 결정과 이유 |
+| `docs/stepNN-practice.md` | 1~9단계 개념을 다지는 실습 과제 (단계마다 6~7개, 정답은 접어 둠). 실습 파일은 `practice\stepNN\`에 만듦 |
 
 | 단계 | 내용 |
 | --- | --- |
