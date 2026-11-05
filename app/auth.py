@@ -10,12 +10,18 @@ import time
 import requests
 
 from app.config import SLACK_CLIENT_ID, SLACK_CLIENT_SECRET, SLACK_TOKEN_FILE
+from app.log import logger
 
 SLACK_API_URL: str = "https://slack.com/api/"
 REQUEST_TIMEOUT_SECONDS: int = 10
 
 # 만료되기 이만큼(초) 전에 미리 새 토큰을 받는다. 메시지를 보내는 도중에 만료되는 일을 막으려고 여유를 둔다.
 REFRESH_MARGIN_SECONDS: int = 300
+
+
+class SlackAuthError(Exception):
+    # Slack 토큰을 새로 발급받지 못했을 때 일으키는 오류
+    pass
 
 
 def save_tokens(access_token: str, refresh_token: str, expires_in: int) -> None:
@@ -78,12 +84,23 @@ def refresh_access_token(refresh_token: str) -> dict:
     return response.json()
 
 
+def refresh_and_save() -> str:
+    # 저장된 refresh token으로 새 토큰을 받아 바로 저장하고, 새 access token을 돌려준다.
+    # 만료가 가까울 때(get_access_token)와, 보내다가 토큰 오류가 났을 때(app/sender.py) 함께 쓴다.
+    tokens = load_tokens()
+    response_body = refresh_access_token(tokens["refresh_token"])
+    if not response_body["ok"]:
+        logger.error(f"Slack 토큰 재발급 실패: 오류 코드 {response_body['error']}")
+        raise SlackAuthError("Slack 토큰을 새로 발급받지 못했습니다.")
+    save_token_response(response_body)
+    logger.info("Slack 토큰을 새로 발급받아 저장했습니다.")
+    return response_body["access_token"]
+
+
 def get_access_token() -> str:
     # 메시지를 보낼 때마다 이 함수로 토큰을 받는다.
     # 만료가 가까우면 새로 발급받아 저장한 뒤, 새 토큰을 돌려준다.
     tokens = load_tokens()
     if needs_refresh(tokens["expires_at"], time.time()):
-        response_body = refresh_access_token(tokens["refresh_token"])
-        save_token_response(response_body)
-        return response_body["access_token"]
+        return refresh_and_save()
     return tokens["access_token"]

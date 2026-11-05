@@ -28,6 +28,9 @@ SLACK_CLIENT_ID: str = os.getenv("SLACK_CLIENT_ID", "")
 SLACK_CLIENT_SECRET: str = os.getenv("SLACK_CLIENT_SECRET", "")
 SLACK_CHANNEL_ID: str = os.getenv("SLACK_CHANNEL_ID", "")
 
+# 오류 알림을 받는 관리자 전용 채널 (5단계부터 사용)
+SLACK_ADMIN_CHANNEL_ID: str = os.getenv("SLACK_ADMIN_CHANNEL_ID", "")
+
 # 토큰 자동 교체를 켜서 토큰이 12시간마다 바뀐다.
 # 프로그램이 스스로 고쳐 써야 하는 값이라 .env가 아니라 따로 파일에 저장한다.
 # secrets 폴더는 .gitignore에 들어 있어서 GitHub에 올라가지 않는다.
