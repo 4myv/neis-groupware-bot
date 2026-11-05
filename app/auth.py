@@ -4,6 +4,8 @@
 # 만료가 가까우면 refresh token으로 새 토큰을 받아 파일에 저장하고, 메시지를 보낼 때는 늘 파일의 토큰을 쓴다.
 # 요청 주소와 인자는 Slack 공식 문서 "Using token rotation"을 따랐다. (docs/step04-devlog.md 참고)
 
+import hashlib
+import hmac
 import json
 import time
 from urllib.parse import parse_qs, urlencode, urlparse
@@ -26,6 +28,12 @@ SLACK_REDIRECT_URI: str = "https://localhost/slack/oauth/callback"
 # 이 앱이 쓰는 봇 권한 전체. 권한을 늘리면 여기에도 적고 reinstall_slack_app.py로 다시 설치한다.
 # chat:write: 메시지 보내기(4단계), im:history: 봇에게 온 1:1 메시지 받기(6단계)
 SLACK_BOT_SCOPES: list[str] = ["chat:write", "im:history"]
+
+# 요청 서명 확인에 쓰는 값들 (Slack 공식 문서 "Verifying requests from Slack")
+SIGNATURE_VERSION: str = "v0"
+# 서명 시각이 지금과 이만큼(초) 넘게 차이 나면 거부한다.
+# 누군가 예전에 가로챈 진짜 요청을 나중에 다시 보내는 것(재전송 공격)을 막기 위해서다.
+MAX_REQUEST_AGE_SECONDS: int = 60 * 5
 
 
 class SlackAuthError(Exception):
@@ -130,6 +138,26 @@ def exchange_code(code: str) -> dict:
         timeout=REQUEST_TIMEOUT_SECONDS,
     )
     return response.json()
+
+
+def make_slack_signature(signing_secret: str, timestamp: str, body: bytes) -> str:
+    # "v0:타임스탬프:요청 본문"을 Signing Secret으로 HMAC-SHA256 계산하고, 16진수 결과 앞에 "v0="을 붙인다.
+    # 본문은 JSON으로 바꾸기 전의 원래 바이트를 그대로 써야 Slack이 계산한 값과 같아진다.
+    basestring = f"{SIGNATURE_VERSION}:{timestamp}:".encode("utf-8") + body
+    digest = hmac.new(signing_secret.encode("utf-8"), basestring, hashlib.sha256).hexdigest()
+    return f"{SIGNATURE_VERSION}={digest}"
+
+
+def is_valid_slack_request(signing_secret: str, timestamp: str, signature: str, body: bytes, now: float) -> bool:
+    # 지금 시각(now)을 밖에서 받아야 테스트에서 원하는 시각을 넣어 볼 수 있다.
+    if not timestamp.isdigit():
+        return False
+    if abs(now - int(timestamp)) > MAX_REQUEST_AGE_SECONDS:
+        return False
+    expected = make_slack_signature(signing_secret, timestamp, body)
+    # == 대신 compare_digest로 비교한다.
+    # ==는 다른 글자를 만나는 순간 멈춰서, 걸린 시간으로 몇 글자까지 맞았는지 알아내는 공격에 쓰일 수 있다.
+    return hmac.compare_digest(expected, signature)
 
 
 def refresh_and_save() -> str:

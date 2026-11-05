@@ -28,6 +28,9 @@ SLACK_CLIENT_ID: str = os.getenv("SLACK_CLIENT_ID", "")
 SLACK_CLIENT_SECRET: str = os.getenv("SLACK_CLIENT_SECRET", "")
 SLACK_CHANNEL_ID: str = os.getenv("SLACK_CHANNEL_ID", "")
 
+# Slack이 보낸 요청이 진짜인지 서명으로 확인할 때 쓰는 비밀값 (7단계부터 사용)
+SLACK_SIGNING_SECRET: str = os.getenv("SLACK_SIGNING_SECRET", "")
+
 # 오류 알림을 받는 관리자 전용 채널 (5단계부터 사용)
 SLACK_ADMIN_CHANNEL_ID: str = os.getenv("SLACK_ADMIN_CHANNEL_ID", "")
 

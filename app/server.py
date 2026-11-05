@@ -3,22 +3,56 @@
 # 실행 방법(가상환경을 켠 상태에서): python -m uvicorn app.server:app --port 8000
 # Slack 앱 설정의 Request URL에는 "터널 주소 + /slack/events"를 적는다. (docs/step06-devlog.md)
 #
-# 6단계: 받은 메시지를 화면과 로그에 남기기만 한다.
-# 서명 검증(가짜 요청 거부)은 7단계, 답장은 8단계에서 더한다.
-# 요청 모양과 규칙은 Slack 공식 문서(Events API, url_verification, message.im)를 따랐다.
+# 6단계: 받은 이벤트를 출력한다.
+# 7단계: 서명이 맞지 않는 요청은 거부하고, 같은 이벤트는 한 번만 처리하고, 명령어를 해석한다.
+# 답장은 8단계에서 더한다.
+# 요청 모양과 규칙은 Slack 공식 문서(Events API, url_verification, message, 요청 서명)를 따랐다.
+
+import json
+import time
 
 from fastapi import FastAPI, Request
 from fastapi.responses import PlainTextResponse
 
+from app.auth import is_valid_slack_request
+from app.commands import parse_command
+from app.config import SLACK_SIGNING_SECRET
 from app.log import logger
 
 # 터널로 인터넷에 열리는 서버라서, FastAPI가 자동으로 만드는 문서 페이지(/docs 등)는 끈다.
 app = FastAPI(docs_url=None, redoc_url=None, openapi_url=None)
 
+# 이미 처리한 이벤트 ID. Slack이 같은 이벤트를 다시 보내도 한 번만 처리하려고 기억해 둔다.
+# 서버를 다시 켜면 비워진다.
+processed_event_ids: set[str] = set()
+
+
+def is_duplicate_event(event_id: str) -> bool:
+    if event_id in processed_event_ids:
+        return True
+    processed_event_ids.add(event_id)
+    return False
+
+
+def is_user_message(event: dict) -> bool:
+    # 봇이 보낸 메시지에는 bot_id가 붙는다. (Slack 공식 문서: message 이벤트의 bot_message)
+    # 수정·삭제 같은 메시지에는 subtype이 붙는다. 사람이 직접 보낸 새 메시지만 명령어로 본다.
+    # 봇이 자기 답장을 다시 명령어로 읽어 끝없이 답하는 일을 막는다.
+    return event.get("type") == "message" and "bot_id" not in event and "subtype" not in event
+
 
 @app.post("/slack/events")
 async def receive_slack_event(request: Request) -> PlainTextResponse:
-    payload = await request.json()
+    # 서명은 받은 그대로의 본문으로 계산해야 한다. 그래서 JSON으로 바꾸기 전에 원래 본문(바이트)을 먼저 읽는다.
+    body = await request.body()
+    timestamp = request.headers.get("x-slack-request-timestamp", "")
+    signature = request.headers.get("x-slack-signature", "")
+    if not is_valid_slack_request(SLACK_SIGNING_SECRET, timestamp, signature, body, time.time()):
+        # CLAUDE.md 규칙: 서명이 맞지 않는 콜백은 거부하고 로그에 기록한다.
+        logger.warning("서명이 맞지 않는 요청을 거부했습니다.")
+        return PlainTextResponse("invalid signature", status_code=401)
+
+    payload = json.loads(body)
 
     # Slack이 Request URL을 등록할 때 한 번 보내는 확인 요청이다.
     # 받은 challenge 값을 글자 그대로 돌려줘야 등록이 끝난다. (Slack 공식 문서: url_verification)
@@ -31,19 +65,19 @@ async def receive_slack_event(request: Request) -> PlainTextResponse:
 
     if payload["type"] == "event_callback":
         event = payload["event"]
-        # 이벤트마다 들어 있는 항목이 달라서, 없을 수도 있는 항목은 get으로 꺼낸다.
-        print(
-            "[받은 이벤트]",
-            "종류:", event.get("type"),
-            "| 채널 종류:", event.get("channel_type"),
-            "| 보낸 사람:", event.get("user"),
-            "| 내용:", event.get("text"),
-        )
-        # 로그에는 메시지 내용 대신 어떤 이벤트가 왔는지만 남긴다.
-        logger.info(
-            f"Slack 이벤트 수신: event_id={payload.get('event_id')}, 종류={event.get('type')}, "
-            f"채널 종류={event.get('channel_type')}, 재전송 번호={retry_number}"
-        )
+        event_id = payload.get("event_id", "")
+        if is_duplicate_event(event_id):
+            # CLAUDE.md 규칙: 콜백 중복 수신 → 응답을 바로 돌려주고, 같은 메시지는 한 번만 처리한다.
+            logger.info(f"이미 처리한 이벤트라 건너뜁니다: event_id={event_id}, 재전송 번호={retry_number}")
+            return PlainTextResponse("ok")
+
+        if is_user_message(event):
+            command = parse_command(event.get("text", ""))
+            print("[명령어]", command, "| 보낸 글:", event.get("text"))
+            # 로그에는 보낸 글 대신 어떤 명령어로 해석했는지만 남긴다.
+            logger.info(f"명령어 해석: event_id={event_id}, 명령어={command}")
+        else:
+            logger.info(f"사람이 보낸 새 메시지가 아니라 건너뜁니다: event_id={event_id}, subtype={event.get('subtype')}")
 
     # 받았다는 뜻으로 바로 200(정상)을 돌려준다.
     return PlainTextResponse("ok")
